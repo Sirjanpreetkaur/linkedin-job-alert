@@ -1,0 +1,27 @@
+{
+  "name": "linkedin-job-alert",
+  "version": "1.0.0",
+  "description": "Create Job alert",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sirjanpreetkaur/linkedin-job-alert.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Sirjanpreetkaur/linkedin-job-alert/issues"
+  },
+  "homepage": "https://github.com/Sirjanpreetkaur/linkedin-job-alert#readme",
+  "dependencies": {
+    "axios": "^1.13.6",
+    "cheerio": "^1.2.0",
+    "dotenv": "^17.3.1",
+    "node-cron": "^4.2.1"
+  }
+}

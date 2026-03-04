@@ -27,3 +27,5 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           JOB_KEYWORDS: ${{ secrets.JOB_KEYWORDS }}
+          JOB_LOCATIONS:  ${{ secrets.JOB_LOCATIONS }}
+          JOB_EXPERIENCE:  ${{ secrets.JOB_EXPERIENCE }}

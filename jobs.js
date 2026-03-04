@@ -6,23 +6,13 @@ const { isNewJob } = require("./utils/seenJobs");
 
 const KEYWORDS = process.env.JOB_KEYWORDS.split(",");
 
-const LOCATIONS = [
-  "Gurugram",
-  "Gurgaon",
-  "Noida",
-  "Delhi NCR",
-  "Delhi",
-  "India"
-];
+const LOCATION = "Delhi NCR";
+const RADIUS = 50;
 
 const MAX_JOB_AGE_HOURS = 24;
 
-// send "no jobs" message only once per hour
+// only send "no jobs" once per hour
 let lastNoJobMessageTime = 0;
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
 
 function isRecentJob(dateString) {
   if (!dateString) return false;
@@ -37,67 +27,64 @@ function isRecentJob(dateString) {
 
 async function fetchJobs() {
 
+  console.log("Checking LinkedIn jobs...");
+
+  let newJobsFound = false;
+
   try {
-
-    console.log("Checking LinkedIn jobs...");
-
-    let newJobsFound = false;
 
     for (const keyword of KEYWORDS) {
 
-      for (const location of LOCATIONS) {
+      const url =
+        `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodeURIComponent(keyword.trim())}&location=${encodeURIComponent(LOCATION)}&distance=${RADIUS}&f_E=1%2C2%2C3&sortBy=DD`;
 
-        const url =
-          `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodeURIComponent(keyword.trim())}&location=${encodeURIComponent(location)}&f_E=1%2C2%2C3&sortBy=DD`;
+      const response = await axios.get(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
+        }
+      });
 
-        try {
+      const html = response.data;
 
-          const response = await axios.get(url, {
-            headers: {
-              "User-Agent":
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36"
-            }
-          });
+      const $ = cheerio.load(html);
 
-          const html = response.data;
-          const $ = cheerio.load(html);
+      $(".base-card").each(async (i, el) => {
 
-          $(".base-card").each(async (i, el) => {
+        const jobId = $(el).attr("data-entity-urn");
 
-            const jobId = $(el).attr("data-entity-urn");
+        const title = $(el)
+          .find(".base-search-card__title")
+          .text()
+          .trim();
 
-            const title = $(el)
-              .find(".base-search-card__title")
-              .text()
-              .trim();
+        const company = $(el)
+          .find(".base-search-card__subtitle")
+          .text()
+          .trim();
 
-            const company = $(el)
-              .find(".base-search-card__subtitle")
-              .text()
-              .trim();
+        const link = $(el)
+          .find(".base-card__full-link")
+          .attr("href");
 
-            const link = $(el)
-              .find(".base-card__full-link")
-              .attr("href");
+        const postedDate =
+          $(el)
+            .find("time")
+            .attr("datetime");
 
-            const postedDate =
-              $(el)
-                .find("time")
-                .attr("datetime");
+        if (!isRecentJob(postedDate)) return;
 
-            if (!isRecentJob(postedDate)) return;
+        if (jobId && isNewJob(jobId)) {
 
-            if (jobId && isNewJob(jobId)) {
+          newJobsFound = true;
 
-              newJobsFound = true;
-
-              const message = `
+          const message = `
 🚀 Fresh LinkedIn Job
 
 💼 ${title}
 🏢 ${company}
 
-📍 ${location}
+📍 ${LOCATION}
 🔎 ${keyword}
 
 🕒 Posted: ${postedDate}
@@ -105,36 +92,16 @@ async function fetchJobs() {
 🔗 ${link}
 `;
 
-              await sendTelegramMessage(message);
+          await sendTelegramMessage(message);
 
-              console.log("New job:", title);
-
-            }
-
-          });
-
-        } catch (err) {
-
-          if (err.response && err.response.status === 429) {
-
-            console.log("LinkedIn rate limit hit. Waiting 60 seconds...");
-            await sleep(60000);
-
-          } else {
-
-            console.log("Request error:", err.message);
-
-          }
+          console.log("New job:", title);
 
         }
 
-        await sleep(4000);
-
-      }
+      });
 
     }
 
-    // send "no jobs" only once per hour
     const now = Date.now();
 
     if (!newJobsFound && now - lastNoJobMessageTime > 3600000) {
@@ -144,18 +111,12 @@ async function fetchJobs() {
 
 No new jobs found in the last hour.
 
-Monitoring:
-Gurugram
-Gurgaon
-Noida
-Delhi NCR
-Delhi
-India
+Still monitoring LinkedIn every 5 minutes.
 `);
 
       lastNoJobMessageTime = now;
 
-      console.log("No new jobs found (hourly update sent).");
+      console.log("No jobs found (hourly message sent)");
 
     }
 

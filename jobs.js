@@ -8,118 +8,81 @@ const KEYWORDS = (process.env.JOB_KEYWORDS || "react developer").split(",");
 
 const LOCATION = "Delhi NCR";
 const RADIUS = 50;
-const MAX_HOURS = 24;
 
-function hoursAgoFromText(text) {
-  if (!text) return null;
-
-  const t = text.toLowerCase().trim();
-
-  if (t.includes("just now")) return 0;
-  if (t.includes("today")) return 0;
-  if (t.includes("yesterday")) return 24;
-
-  const num = parseInt(t);
-
-  if (t.includes("minute") || t.includes("min")) return num / 60;
-  if (t.includes("hour") || t.includes("hr")) return num;
-  if (t.includes("day")) return num * 24;
-
-  return null;
-}
-
-function hoursAgoFromDatetime(datetime) {
-  if (!datetime) return null;
-
-  const posted = new Date(datetime);
-  const now = new Date();
-
-  const diff = (now - posted) / (1000 * 60 * 60);
-  return diff;
-}
+// check first 3 pages (75 jobs)
+const START_POSITIONS = [0, 25, 50];
 
 async function fetchJobs() {
 
-  console.log("\n===============================");
+  console.log("\n==============================");
   console.log("Checking LinkedIn jobs");
   console.log("Time:", new Date().toLocaleString());
-  console.log("===============================\n");
+  console.log("==============================\n");
 
   try {
 
     for (const keyword of KEYWORDS) {
 
-      console.log("Searching keyword:", keyword);
-const url =
-`https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodeURIComponent(keyword.trim())}&location=${encodeURIComponent(LOCATION)}&distance=${RADIUS}&f_E=1%2C2%2C3&f_TPR=r86400&sortBy=DD`;
-     
-      console.log("URL:", url);
+      console.log("\nSearching keyword:", keyword);
 
-      const response = await axios.get(url, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-        }
-      });
+      for (const start of START_POSITIONS) {
 
-      const html = response.data;
+        const url =
+          `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodeURIComponent(keyword.trim())}&location=India&geoId=102713980&distance=50&f_TPR=r86400&sortBy=DD&start=${start}`;
+        console.log("\nRequest URL:", url);
 
-      const $ = cheerio.load(html);
+        const response = await axios.get(url, {
+          headers: {
+            "User-Agent": "Mozilla/5.0"
+          }
+        });
 
-      const jobs = $(".base-card");
+        const html = response.data;
 
-      console.log("Jobs fetched:", jobs.length);
+        const $ = cheerio.load(html);
 
-      jobs.each(async (i, el) => {
+        const jobCards = $(".base-card");
 
-        const jobId = $(el).attr("data-entity-urn");
+        console.log("Jobs fetched:", jobCards.length);
 
-        const title = $(el)
-          .find(".base-search-card__title")
-          .text()
-          .trim();
-
-        const company = $(el)
-          .find(".base-search-card__subtitle")
-          .text()
-          .trim();
-
-        const link = $(el)
-          .find(".base-card__full-link")
-          .attr("href");
-
-        const datetime = $(el).find("time").attr("datetime");
-
-        const textTime = $(el)
-          .find(".job-search-card__listdate")
-          .text()
-          .trim();
-
-        let hoursAgo = hoursAgoFromDatetime(datetime);
-
-        if (hoursAgo === null || isNaN(hoursAgo)) {
-          hoursAgo = hoursAgoFromText(textTime);
+        if (jobCards.length === 0) {
+          console.log("No jobs returned from this page");
+          continue;
         }
 
-        console.log("\n----------------------------");
-        console.log("Job:", title);
-        console.log("Company:", company);
-        console.log("Datetime:", datetime);
-        console.log("Text time:", textTime);
-        console.log("Hours ago:", hoursAgo);
-        console.log("----------------------------");
+        jobCards.each(async (i, el) => {
 
-        if (hoursAgo === null || hoursAgo > MAX_HOURS) {
-          console.log("❌ Skipping (older than 24h)");
-          return;
-        }
+          const jobId = $(el).attr("data-entity-urn");
 
-        if (jobId && isNewJob(jobId)) {
+          const title = $(el)
+            .find(".base-search-card__title")
+            .text()
+            .trim();
 
-          console.log("✅ New job within 24h");
+          const company = $(el)
+            .find(".base-search-card__subtitle")
+            .text()
+            .trim();
 
-          const message = `
-🚀 LinkedIn Job (Last 24h)
+          const link = $(el)
+            .find(".base-card__full-link")
+            .attr("href");
+
+          const postedTime = $(el)
+            .find(".job-search-card__listdate")
+            .text()
+            .trim();
+
+          console.log("\n----------------------");
+          console.log("Job:", title);
+          console.log("Company:", company);
+          console.log("Posted:", postedTime);
+          console.log("----------------------");
+
+          if (jobId && isNewJob(jobId)) {
+
+            const message = `
+🚀 New LinkedIn Job
 
 💼 ${title}
 🏢 ${company}
@@ -127,23 +90,31 @@ const url =
 📍 ${LOCATION}
 🔎 ${keyword}
 
-🕒 Posted: ${textTime || datetime}
+🕒 Posted: ${postedTime}
 
 🔗 ${link}
 `;
 
-          try {
-            await sendTelegramMessage(message);
-            console.log("📩 Telegram sent");
-          } catch (err) {
-            console.log("Telegram error:", err.message);
+            try {
+
+              await sendTelegramMessage(message);
+              console.log("📩 Telegram alert sent");
+
+            } catch (err) {
+
+              console.log("Telegram error:", err.message);
+
+            }
+
+          } else {
+
+            console.log("Duplicate job skipped");
+
           }
 
-        } else {
-          console.log("⚠️ Duplicate job skipped");
-        }
+        });
 
-      });
+      }
 
     }
 

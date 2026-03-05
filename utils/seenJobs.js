@@ -1,30 +1,31 @@
 const fs = require("fs");
 
-const FILE_PATH = "./seenJobs.json";
+const FILE = "./seenJobs.json";
 
-function loadJobs() {
+function loadSeenJobs() {
   try {
-    const data = fs.readFileSync(FILE_PATH);
+    const data = fs.readFileSync(FILE);
     return new Set(JSON.parse(data));
   } catch {
     return new Set();
   }
 }
 
-function saveJobs(jobs) {
-  fs.writeFileSync(FILE_PATH, JSON.stringify([...jobs], null, 2));
+function saveSeenJobs(seenJobs) {
+  fs.writeFileSync(FILE, JSON.stringify([...seenJobs], null, 2));
 }
 
-let seenJobs = loadJobs();
+let seenJobs = loadSeenJobs();
 
-function isNewJob(jobId) {
+function isNewJob(jobLink) {
 
-  if (seenJobs.has(jobId)) {
+  if (seenJobs.has(jobLink)) {
     return false;
   }
 
-  seenJobs.add(jobId);
-  saveJobs(seenJobs);
+  seenJobs.add(jobLink);
+
+  saveSeenJobs(seenJobs);
 
   return true;
 }

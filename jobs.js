@@ -58,10 +58,8 @@ async function fetchJobs() {
         console.log("\nLocation:", location);
 
         for (const start of START_POSITIONS) {
-
-          const url =
-            `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodeURIComponent(keyword.trim())}&location=${encodeURIComponent(location)}&distance=${RADIUS}&f_TPR=r86400&sortBy=DD&start=${start}`;
-
+         const url =
+`https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodeURIComponent(keyword.trim())}&location=${encodeURIComponent(location)}&distance=50&f_TPR=r7200&sortBy=DD&start=${start}`;
           console.log("\nRequest URL:", url);
 
           const response = await axios.get(url, {

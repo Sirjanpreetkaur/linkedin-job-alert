@@ -2,7 +2,7 @@ const fs = require("fs");
 
 const FILE_PATH = "./seenJobs.json";
 
-function loadSeenJobs() {
+function loadJobs() {
   try {
     const data = fs.readFileSync(FILE_PATH);
     return new Set(JSON.parse(data));
@@ -11,11 +11,11 @@ function loadSeenJobs() {
   }
 }
 
-function saveSeenJobs(seenJobs) {
-  fs.writeFileSync(FILE_PATH, JSON.stringify([...seenJobs], null, 2));
+function saveJobs(jobs) {
+  fs.writeFileSync(FILE_PATH, JSON.stringify([...jobs], null, 2));
 }
 
-let seenJobs = loadSeenJobs();
+let seenJobs = loadJobs();
 
 function isNewJob(jobId) {
 
@@ -24,7 +24,7 @@ function isNewJob(jobId) {
   }
 
   seenJobs.add(jobId);
-  saveSeenJobs(seenJobs);
+  saveJobs(seenJobs);
 
   return true;
 }

@@ -2,11 +2,8 @@ name: LinkedIn Job Bot
 
 on:
   schedule:
-    - cron: "0 * * * *"   # Runs every 1 hour
+    - cron: "0 * * * *"   # Runs every hour
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 jobs:
   run-bot:

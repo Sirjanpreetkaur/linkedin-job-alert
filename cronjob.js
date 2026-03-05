@@ -1,13 +1,19 @@
 require("dotenv").config();
-const cron = require("node-cron");
 const { fetchJobs } = require("./jobs");
 
-console.log("LinkedIn Job Bot Started...");
+console.log("=================================");
+console.log("LinkedIn Job Bot Started");
+console.log("Time:", new Date().toLocaleString());
+console.log("=================================");
 
-cron.schedule("*/5 * * * *", async () => {
-  console.log("Running job check...");
-  await fetchJobs();
-});
+async function runBot() {
+  try {
+    console.log("Checking LinkedIn jobs...");
+    await fetchJobs();
+    console.log("Job check completed.");
+  } catch (error) {
+    console.error("Bot error:", error);
+  }
+}
 
-// Run once immediately
-fetchJobs();
+runBot();

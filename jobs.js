@@ -6,11 +6,39 @@ const { isNewJob } = require("./utils/seenJobs");
 
 const KEYWORDS = (process.env.JOB_KEYWORDS || "react developer").split(",");
 
-const LOCATION = "Delhi NCR";
+// Preferred locations
+const LOCATIONS = [
+  "Gurugram",
+  "Gurgaon",
+  "Noida",
+  "Delhi",
+  "Delhi NCR"
+];
+
+// Radius in KM
 const RADIUS = 50;
 
-// check first 3 pages (75 jobs)
+// Pagination (75 jobs)
 const START_POSITIONS = [0, 25, 50];
+
+// Only allow relevant titles
+const TITLE_FILTERS = [
+  "react developer",
+  "react js developer",
+  "frontend developer",
+  "frontend web developer",
+  "ui developer",
+  "ui engineer",
+  "next js developer",
+  "software engineer frontend",
+  "frontend",
+  "front end",
+  "react",
+  "javascript",
+  "ui developer",
+  "web developer",
+  "software engineer"
+];
 
 async function fetchJobs() {
 
@@ -25,69 +53,87 @@ async function fetchJobs() {
 
       console.log("\nSearching keyword:", keyword);
 
-      for (const start of START_POSITIONS) {
+      for (const location of LOCATIONS) {
 
-        const url =
-          `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodeURIComponent(keyword.trim())}&location=India&geoId=102713980&distance=50&f_TPR=r86400&sortBy=DD&start=${start}`;
-        console.log("\nRequest URL:", url);
+        console.log("\nLocation:", location);
 
-        const response = await axios.get(url, {
-          headers: {
-            "User-Agent": "Mozilla/5.0"
+        for (const start of START_POSITIONS) {
+
+          const url =
+            `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodeURIComponent(keyword.trim())}&location=${encodeURIComponent(location)}&distance=${RADIUS}&f_TPR=r86400&sortBy=DD&start=${start}`;
+
+          console.log("\nRequest URL:", url);
+
+          const response = await axios.get(url, {
+            headers: {
+              "User-Agent": "Mozilla/5.0"
+            }
+          });
+
+          const html = response.data;
+
+          const $ = cheerio.load(html);
+
+          const jobCards = $(".base-card");
+
+          console.log("Jobs fetched:", jobCards.length);
+
+          if (jobCards.length === 0) {
+            console.log("No jobs returned from this page");
+            continue;
           }
-        });
 
-        const html = response.data;
+          jobCards.each(async (i, el) => {
 
-        const $ = cheerio.load(html);
+            const title = $(el)
+              .find(".base-search-card__title")
+              .text()
+              .trim();
 
-        const jobCards = $(".base-card");
+            const company = $(el)
+              .find(".base-search-card__subtitle")
+              .text()
+              .trim();
 
-        console.log("Jobs fetched:", jobCards.length);
+            const link = $(el)
+              .find(".base-card__full-link")
+              .attr("href");
 
-        if (jobCards.length === 0) {
-          console.log("No jobs returned from this page");
-          continue;
-        }
+            const postedTime = $(el)
+              .find(".job-search-card__listdate")
+              .text()
+              .trim();
 
-        jobCards.each(async (i, el) => {
+            console.log("\n----------------------");
+            console.log("Job:", title);
+            console.log("Company:", company);
+            console.log("Posted:", postedTime);
+            console.log("----------------------");
 
-          const jobId = $(el).attr("data-entity-urn");
+            // Filter relevant job titles
+            const lowerTitle = title.toLowerCase();
 
-          const title = $(el)
-            .find(".base-search-card__title")
-            .text()
-            .trim();
+            const relevant = TITLE_FILTERS.some(word =>
+              lowerTitle.includes(word)
+            );
 
-          const company = $(el)
-            .find(".base-search-card__subtitle")
-            .text()
-            .trim();
+            if (!relevant) {
+              console.log("Skipping irrelevant job:", title);
+              return;
+            }
 
-          const link = $(el)
-            .find(".base-card__full-link")
-            .attr("href");
+            // Use job link as unique ID
+            const jobId = link;
 
-          const postedTime = $(el)
-            .find(".job-search-card__listdate")
-            .text()
-            .trim();
+            if (jobId && isNewJob(jobId)) {
 
-          console.log("\n----------------------");
-          console.log("Job:", title);
-          console.log("Company:", company);
-          console.log("Posted:", postedTime);
-          console.log("----------------------");
-
-          if (jobId && isNewJob(jobId)) {
-
-            const message = `
-🚀 New LinkedIn Job
+              const message = `
+🚀 New Frontend Job
 
 💼 ${title}
 🏢 ${company}
 
-📍 ${LOCATION}
+📍 ${location}
 🔎 ${keyword}
 
 🕒 Posted: ${postedTime}
@@ -95,24 +141,26 @@ async function fetchJobs() {
 🔗 ${link}
 `;
 
-            try {
+              try {
 
-              await sendTelegramMessage(message);
-              console.log("📩 Telegram alert sent");
+                await sendTelegramMessage(message);
+                console.log("📩 Telegram alert sent");
 
-            } catch (err) {
+              } catch (err) {
 
-              console.log("Telegram error:", err.message);
+                console.log("Telegram error:", err.message);
+
+              }
+
+            } else {
+
+              console.log("Duplicate job skipped");
 
             }
 
-          } else {
+          });
 
-            console.log("Duplicate job skipped");
-
-          }
-
-        });
+        }
 
       }
 

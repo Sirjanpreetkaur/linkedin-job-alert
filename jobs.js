@@ -58,9 +58,8 @@ async function fetchJobs() {
         console.log("\nLocation:", location);
 
         for (const start of START_POSITIONS) {
-         const url =
-`https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=${encodeURIComponent(keyword.trim())}&location=${encodeURIComponent(location)}&distance=50&f_TPR=r7200&sortBy=DD&start=${start}`;
-          console.log("\nRequest URL:", url);
+          const url =
+            `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?location=${encodeURIComponent(location)}&distance=50&f_TPR=r7200&sortBy=DD&start=${start}`;
 
           const response = await axios.get(url, {
             headers: {
@@ -80,8 +79,9 @@ async function fetchJobs() {
             console.log("No jobs returned from this page");
             continue;
           }
+          for (let i = 0; i < jobCards.length; i++) {
+            const el = jobCards[i];
 
-          jobCards.each(async (i, el) => {
 
             const title = $(el)
               .find(".base-search-card__title")
@@ -97,11 +97,12 @@ async function fetchJobs() {
               .find(".base-card__full-link")
               .attr("href");
 
+
+
             const postedTime = $(el)
-              .find(".job-search-card__listdate")
+              .find("time")
               .text()
               .trim();
-
             console.log("\n----------------------");
             console.log("Job:", title);
             console.log("Company:", company);
@@ -117,7 +118,7 @@ async function fetchJobs() {
 
             if (!relevant) {
               console.log("Skipping irrelevant job:", title);
-              return;
+              continue;
             }
 
             // Use job link as unique ID
@@ -140,9 +141,10 @@ async function fetchJobs() {
 `;
 
               try {
-
                 await sendTelegramMessage(message);
                 console.log("📩 Telegram alert sent");
+
+                await new Promise(resolve => setTimeout(resolve, 800));
 
               } catch (err) {
 
@@ -156,7 +158,7 @@ async function fetchJobs() {
 
             }
 
-          });
+          };
 
         }
 
